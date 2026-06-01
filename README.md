@@ -1,47 +1,168 @@
-# Portal_Web_Santo_Domingo
-Portal Web creado para la municipalidad de Santo Domingo donde se da información sobre noticias medio-ambientales, actividades de la municipalidad y la posibilidad de que las personas puedan dar su opinión sobre proyectos que se lleven a cabo en la zona
+# Portal Ambiental Participativo — Municipalidad de Santo Domingo
 
-## 1. Justificación del Problema y Análisis del Usuario Objetivo
+Aplicación web (SPA) para la gestión ambiental comunal de Santo Domingo. Permite a la
+ciudadanía consultar servicios (recolección de basura, puntos de reciclaje, zonas verdes),
+revisar la cartera de proyectos comunales, participar mediante votación y opinión sobre
+proyectos, y a los funcionarios municipales gestionar contenido y consultar reportes
+consolidados de participación.
 
-**Justificación del problema:**
-La ciudadanía actualmente tiene un rol limitado en el manejo de recursos y decisiones de impacto territorial. [cite_start]Este portal nace como respuesta a la necesidad de mejorar la gestión ambiental comunal[cite: 13]. [cite_start]Su objetivo es diagnosticar la capacidad de gestión en dimensiones clave como Gobernanza, Gestión de Residuos, Áreas Verdes, Movilidad e Infraestructura Sustentable[cite: 34]. [cite_start]La plataforma provee evidencia empírica para desarrollar medidas de gestión ambiental que propendan hacia mayores niveles en la calidad de vida de los habitantes, apoyando el desarrollo de proyectos y el establecimiento de metas medioambientales[cite: 215].
+Construida con **Ionic React** como **Single Page Application**, bajo el paradigma
+*Mobile-First*, con autenticación simulada por **RUT + Clave Única** y control de acceso por
+roles (Ciudadano / Administrador).
 
-**Análisis del Usuario Objetivo:**
-El sistema contempla dos roles principales:
-* **Usuario (Ciudadano):** Habitantes de la comuna que requieren información rápida y accesible sobre servicios diarios (basura, reciclaje, actividades) y que buscan un canal seguro y validado (vía Clave Única) para ejercer su derecho a la participación ciudadana opinando sobre proyectos arquitectónicos.
-* **Admin (Funcionario Municipal):** Encargados de las áreas de medio ambiente y obras, que necesitan publicar noticias, actualizar la cartelera de proyectos y recolectar informes consolidados sobre la opinión popular para respaldar la toma de decisiones.
+---
 
-## 2. Requerimientos del Sistema
+## Integrantes
 
-### Requerimientos Funcionales (RF)
-1. **Consulta de Servicios:** El sistema debe permitir al usuario visualizar los horarios y recorridos de los camiones de recolección de basura.
-2. **Geolocalización Informativa:** El sistema debe listar la ubicación de puntos de reciclaje y zonas verdes comunales.
-3. **Gestión de Solicitudes:** El sistema debe permitir a los ciudadanos enviar formularios para solicitar retiro de basura/reciclables a domicilio o la instalación de nuevos tachos de reciclaje.
-4. **Visualización de Proyectos:** El sistema debe mostrar una cartera de proyectos arquitectónicos detallando su estado, sector y duración.
-5. **Participación Ciudadana (Votación):** El sistema debe permitir a los usuarios autenticados emitir una valoración y comentario sobre proyectos específicos.
-6. **Gestión de Contenido (Admin):** El administrador debe tener la capacidad de publicar y editar noticias medioambientales y la agenda de actividades.
-7. **Generación de Reportes (Admin):** El sistema debe proveer al administrador un informe consolidado con las estadísticas de la opinión popular sobre los proyectos.
+- **Rodrigo Rojas**
+- **Guadalupe Marín**
+- **Matías Núñez**
 
-### Requerimientos No Funcionales (RNF)
-1. **Seguridad de Identidad:** El proceso de participación y opinión debe estar estrictamente ligado a una validación de identidad simulando el uso del RUT y Clave Única del Estado.
-2. **Diseño Responsivo:** La interfaz debe estar construida bajo el paradigma *Mobile-First*, garantizando una visualización y usabilidad óptima tanto en navegadores de escritorio como en dispositivos móviles.
-3. **Rendimiento (SPA):** La plataforma debe funcionar como una *Single Page Application*, asegurando que la navegación entre secciones (Noticias, Servicios, Proyectos) ocurra sin recargar el navegador, minimizando los tiempos de espera.
+---
 
-## 3. Arquitectura de Navegación y Experiencia de Usuario (UX)
+## Descripción de la entrega
 
-La plataforma utiliza una arquitectura plana y modular orientada a facilitar el acceso rápido a la información.
+Esta entrega corresponde al portal con su **sistema visual definitivo** ("Herbario
+Patrimonial") aplicado sobre la arquitectura Ionic React del proyecto. Incluye:
 
-* **Rutas Principales:** `/inicio`, `/proyectos`, `/noticias`, `/servicios`, `/actividades`, `/opinion`, `/login`.
-* **Jerarquía y Flujo de Interacción:** La navegación está centralizada en una barra superior (`Navbar`) persistente. Desde el `Inicio` (Dashboard), el usuario tiene atajos directos a submódulos específicos (ej. consultar un horario redirige a `/servicios?tipo=basura`). 
-* **Puntos Críticos de Interacción:** El flujo de votación ciudadana requiere pasar por un *gateway* de seguridad. Si un usuario intenta opinar sobre un proyecto (`/proyectos/:id/opinar`), el sistema intercepta la acción y fuerza el flujo de inicio de sesión (`/login`) antes de permitir el envío del formulario.
-* **Diferencia de Acceso (Roles):** Todas las rutas informativas son públicas. La emisión de formularios de opinión está protegida para el rol **Usuario** validado. Las vistas de publicación y revisión de reportes estarán protegidas exclusivamente para el rol **Admin**.
-* **Justificación Técnica:** Se implementó `React Router` dentro del ecosistema de Ionic (`IonReactRouter`) para manejar el enrutamiento del lado del cliente, garantizando la escalabilidad de la arquitectura frontend. Se utilizaron componentes nativos de Ionic (`IonGrid`, `IonCard`) para asegurar la coherencia espacial y la eficiencia de interacción en cualquier tamaño de pantalla, manteniendo un diseño limpio y estandarizado.
+- Las **7 funcionalidades requeridas (RF)**: consulta de servicios, geolocalización
+  informativa de reciclaje/zonas verdes, gestión de solicitudes, visualización de proyectos,
+  participación ciudadana (votación), gestión de contenido (Admin) y generación de reportes (Admin).
+- Los **3 requerimientos no funcionales (RNF)**: seguridad de identidad (RUT + Clave Única),
+  diseño responsivo *Mobile-First* y rendimiento como SPA (navegación sin recargas).
+- Control de acceso por roles con un *gateway* de seguridad: las rutas informativas son
+  públicas; opinar requiere sesión de Ciudadano; el panel y los reportes son exclusivos de Admin.
 
-## 4. Tecnologías Utilizadas
-* **Framework:** Ionic React
-* **Enrutamiento:** React Router DOM
-* **Estilos:** CSS Modules / Ionic Variables
+---
 
-## 5. Links a Figma
-**Link al prototipo en figma:** https://www.figma.com/proto/013ipqQanul4cv33jTLhFr/PortalWeb_Muni_San.Dom?node-id=1-3&p=f&t=dPYWLWwAmm5rmG3A-1&scaling=min-zoom&content-scaling=fixed&page-id=0%3A1&starting-point-node-id=1%3A3
-**Link a figma:** https://www.figma.com/design/013ipqQanul4cv33jTLhFr/PortalWeb_Muni_San.Dom?node-id=0-1&t=Drwdu0TrpZ3ev1Vw-1
+## Tecnologías
+
+| Área | Tecnología |
+|---|---|
+| Framework UI | Ionic React 8 |
+| Librería base | React 19 |
+| Enrutamiento | React Router DOM v5 (`@ionic/react-router`) |
+| Build tool | Vite 5 |
+| Lenguaje | TypeScript |
+| Runtime nativo | Capacitor 8 |
+| Estilos | CSS propio (`src/theme/app.css` + `variables.css`) + variables de Ionic |
+| Testing | Vitest (unit) · Cypress (e2e) |
+
+La persistencia de datos es **simulada con `localStorage`** (capa de servicios síncrona),
+por lo que el proyecto se ejecuta de forma autónoma sin necesidad de un backend.
+
+---
+
+## Estructura del proyecto
+
+```
+src/
+├── App.tsx                 # Definición de rutas (públicas, protegidas y solo-admin)
+├── main.tsx                # Punto de entrada / setupIonicReact
+├── components/             # Layout, Header/Tabbar, Icons, ui, ProtectedRoute, etc.
+├── context/                # AuthContext (estado de sesión y rol)
+├── pages/                  # Pantallas: Inicio, Servicios, Noticias, Actividades,
+│   ├── Proyectos/          #   Opinión, Login, Registro, Perfil, Votar,
+│   └── Admin/              #   Proyectos (lista/detalle) y Admin (Dashboard/Reportes)
+├── services/               # authService y dataService (localStorage)
+├── theme/                  # Sistema visual: app.css + variables.css
+├── types/                  # Tipos TypeScript del dominio
+└── utils/                  # Utilidades (validación/sanitización)
+```
+
+---
+
+## Requisitos previos
+
+- **Node.js** 18 o superior y **npm** (incluido con Node).
+- Opcional: **Ionic CLI** (`npm install -g @ionic/cli`) para usar `ionic serve`.
+
+Verifica tu versión con:
+
+```bash
+node --version
+npm --version
+```
+
+---
+
+## Pasos para ejecutar el proyecto
+
+1. **Clonar el repositorio**
+
+   ```bash
+   git clone https://github.com/WDBronce1/Portal_Web_Santo_Domingo.git
+   cd Portal_Web_Santo_Domingo
+   ```
+
+2. **Instalar las dependencias**
+
+   ```bash
+   npm install
+   ```
+
+3. **Levantar el servidor de desarrollo**
+
+   ```bash
+   npm run dev
+   ```
+
+   Vite mostrará una URL local (por defecto `http://localhost:5173`). Ábrela en el navegador.
+
+4. **Generar el build de producción** (opcional)
+
+   ```bash
+   npm run build
+   ```
+
+   El resultado queda en la carpeta `dist/`.
+
+5. **Previsualizar el build de producción** (opcional)
+
+   ```bash
+   npm run preview
+   ```
+
+### Otros comandos disponibles
+
+| Comando | Descripción |
+|---|---|
+| `npm run lint` | Análisis estático con ESLint |
+| `npm run test.unit` | Pruebas unitarias con Vitest |
+| `npm run test.e2e` | Pruebas end-to-end con Cypress |
+
+---
+
+## Cuentas de prueba
+
+El sistema incluye usuarios precargados para probar los distintos roles:
+
+| Rol | RUT | Clave |
+|---|---|---|
+| Ciudadano/a | `12.345.678-5` | `clave1234` |
+| Administrador | `11.111.111-1` | `admin1234` |
+
+También es posible registrar una cuenta nueva de Ciudadano desde `/registro`.
+
+---
+
+## Rutas principales
+
+- **Públicas:** `/inicio`, `/proyectos`, `/proyectos/:id`, `/servicios`, `/noticias`,
+  `/actividades`, `/opinion`, `/login`, `/registro`
+- **Protegidas (Ciudadano):** `/proyectos/:id/opinar`, `/perfil`
+- **Protegidas (Admin):** `/admin`, `/admin/reportes`
+
+---
+
+## Despliegue
+
+El proyecto está preparado para desplegarse en **Vercel** como SPA (ver `vercel.json`, que
+incluye el *rewrite* hacia `index.html` para soportar enlaces profundos).
+
+---
+
+## Prototipo en Figma
+
+- **Prototipo navegable:** https://www.figma.com/proto/013ipqQanul4cv33jTLhFr/PortalWeb_Muni_San.Dom?node-id=1-3&p=f&t=dPYWLWwAmm5rmG3A-1&scaling=min-zoom&content-scaling=fixed&page-id=0%3A1&starting-point-node-id=1%3A3
+- **Diseño:** https://www.figma.com/design/013ipqQanul4cv33jTLhFr/PortalWeb_Muni_San.Dom?node-id=0-1&t=Drwdu0TrpZ3ev1Vw-1

@@ -1,40 +1,93 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+/* =========================================================================
+   DESIGN TOKENS — Portal Ambiental · Municipalidad de Santo Domingo
+   Sistema "Herbario Patrimonial": verde institucional ambiental (#14633E)
+   entrelazado con el azul oficial #0D1F61 (hilo de marca santodomingo.cl),
+   acentos lima #8BC34A / amarillo-lima #DCEB00 y celeste CTA #0084D8.
+   Tipografías: Schibsted Grotesk (títulos) · Hanken Grotesk (cuerpo) ·
+   Spline Sans Mono (kickers/datos).
+   ========================================================================= */
+@import url('https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=Hanken+Grotesk:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500&display=swap');
 
 :root {
-  /* 
-    Esto hace que el color principal de la pagina sea el verde menta este 
-    y forzar que el navegador coloque modo claro
-  */
   color-scheme: light;
-  --ion-color-primary: rgb(42, 100, 40); 
-  --ion-font-family: 'Nunito', sans-serif;
-  --ion-color-success: #1f5f3e;
-}
 
-body {
-  background-image: url('../Santo-Domingo.jpg');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-}
+  /* —— Marca: verde ambiental —— */
+  --green:      #14633E;   /* primario */
+  --green-900:  #0A2E1E;
+  --green-800:  #0F4A2E;
+  --green-700:  #1B7549;
+  --green-600:  #258A59;
+  --green-500:  #3AA46F;
+  --green-200:  #A9D8C0;
+  --green-100:  #DCEEE4;
 
-/* Esto es para que el fondo sea transparente */
-ion-content {
-  --background: transparent;
-}
+  /* —— Marca: azul institucional (hilo a santodomingo.cl) —— */
+  --navy:       #0D1F61;
+  --navy-900:   #0A1647;
+  --navy-700:   #16287A;
+  --navy-500:   #25368F;
 
-/* Clase para que las tarjetas/ventanas sean transparentes tipo glassphormism */
-.glass-panel {
-  background: rgba(237, 238, 239, 0.7) !important;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-top: 6px solid var(--ion-color-success, #1b6b0b);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);
-}
-.glass-panel ion-card-title, 
-.glass-panel p, 
-.glass-panel strong, 
-.glass-panel ion-label {
-  color: #000000 !important; /* Gris oscuro para máximo contraste */
+  /* —— Acentos —— */
+  --lime:       #8BC34A;
+  --lime-bright:#DCEB00;
+  --sky:        #0084D8;
+
+  /* —— Neutros —— */
+  --ink:        #14261C;
+  --body:       #4F5655;
+  --muted:      #7C8480;
+  --paper:      #F4F8F5;
+  --paper-2:    #ECF3EE;
+  --surface:    #FFFFFF;
+  --line:       rgba(20,99,62,.14);
+  --line-soft:  rgba(20,99,62,.09);
+
+  /* —— Gradiente de marca navy → verde —— */
+  --brand-grad: linear-gradient(100deg, #0D1F61 0%, #123A57 32%, #14633E 64%, #258A59 100%);
+
+  /* —— Tipografía —— */
+  --font-display: 'Schibsted Grotesk', system-ui, sans-serif;
+  --font-body:    'Hanken Grotesk', system-ui, sans-serif;
+  --font-mono:    'Spline Sans Mono', ui-monospace, monospace;
+
+  /* —— Espaciado —— */
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px;
+  --s-5: 20px; --s-6: 24px; --s-8: 32px; --s-12: 48px; --s-16: 64px;
+
+  /* —— Radios —— */
+  --r-xs: 8px; --r-sm: 12px; --r: 16px; --r-lg: 20px; --r-xl: 28px; --r-pill: 999px;
+
+  /* —— Sombras —— */
+  --sh-1: 0 1px 2px rgba(16,58,38,.04), 0 6px 18px rgba(16,58,38,.05);
+  --sh-2: 0 2px 6px rgba(16,58,38,.05), 0 16px 38px rgba(16,58,38,.08);
+  --sh-3: 0 8px 24px rgba(16,58,38,.10), 0 30px 60px rgba(16,58,38,.10);
+  --ring: 0 0 0 3px rgba(0,132,216,.28);
+
+  --ease: cubic-bezier(.22,.61,.36,1);
+  --lime-mix: 1;
+  --tex-dur: 38s;
+
+  /* ===== Mapeo Ionic ===== */
+  --ion-font-family: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+
+  --ion-color-primary: #14633E;
+  --ion-color-primary-rgb: 20, 99, 62;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-shade: #11572f;
+  --ion-color-primary-tint: #258a59;
+
+  --ion-color-success: #14633E;
+  --ion-color-success-rgb: 20, 99, 62;
+  --ion-color-success-contrast: #ffffff;
+  --ion-color-success-shade: #11572f;
+  --ion-color-success-tint: #258a59;
+
+  --ion-color-warning: #0084d8;
+  --ion-color-warning-rgb: 0, 132, 216;
+  --ion-color-warning-contrast: #ffffff;
+  --ion-color-warning-shade: #0074bd;
+  --ion-color-warning-tint: #1a90dc;
+
+  --ion-background-color: #F4F8F5;
+  --ion-text-color: #14261C;
 }

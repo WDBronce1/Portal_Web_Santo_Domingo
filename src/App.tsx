@@ -1,63 +1,81 @@
+import React, { Suspense, lazy } from 'react';
 import { Redirect, Route } from 'react-router-dom';
-import { IonApp, IonRouterOutlet, setupIonicReact } from '@ionic/react';
+import { IonApp, IonRouterOutlet, IonSpinner, setupIonicReact } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
 
-import Inicio from './pages/Inicio';
-import Proyectos from './pages/Proyectos/Lista-de-Proyectos';
-import Noticias from './pages/Noticias';
-import Servicios from './pages/Servicios';
-import Actividades from './pages/Actividades';
-import Opinion from './pages/Opinion';  
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 
-/* Core CSS required for Ionic components to work properly */
+/* Core CSS de Ionic */
 import '@ionic/react/css/core.css';
-
-/* Basic CSS for apps built with Ionic */
 import '@ionic/react/css/normalize.css';
 import '@ionic/react/css/structure.css';
 import '@ionic/react/css/typography.css';
-
-/* Optional CSS utils that can be commented out */
 import '@ionic/react/css/padding.css';
-import '@ionic/react/css/float-elements.css';
 import '@ionic/react/css/text-alignment.css';
 import '@ionic/react/css/text-transformation.css';
 import '@ionic/react/css/flex-utils.css';
 import '@ionic/react/css/display.css';
 
-/**
- * Ionic Dark Mode
- * -----------------------------------------------------
- * For more info, please see:
- * https://ionicframework.com/docs/theming/dark-mode
- */
-
-/* import '@ionic/react/css/palettes/dark.always.css'; */
-/* import '@ionic/react/css/palettes/dark.class.css'; */
-import '@ionic/react/css/palettes/dark.system.css';
-
-/* Theme variables */
+/* Tokens + sistema de diseño */
 import './theme/variables.css';
+import './theme/app.css';
 
-setupIonicReact();
+/* Páginas (lazy para reducir el bundle inicial) */
+const Inicio = lazy(() => import('./pages/Inicio'));
+const Servicios = lazy(() => import('./pages/Servicios'));
+const ListaProyectos = lazy(() => import('./pages/Proyectos/Lista-de-Proyectos'));
+const DetalleProyecto = lazy(() => import('./pages/Proyectos/Detalle-de-Proyecto'));
+const Noticias = lazy(() => import('./pages/Noticias'));
+const Actividades = lazy(() => import('./pages/Actividades'));
+const Opinion = lazy(() => import('./pages/Opinion'));
+const Votar = lazy(() => import('./pages/Votar'));
+const Login = lazy(() => import('./pages/Login'));
+const Registro = lazy(() => import('./pages/Registro'));
+const Perfil = lazy(() => import('./pages/Perfil'));
+const AdminDashboard = lazy(() => import('./pages/Admin/Dashboard'));
+const AdminReportes = lazy(() => import('./pages/Admin/Reportes'));
+
+setupIonicReact({ mode: 'md' });
+
+const Cargando: React.FC = () => (
+  <div style={{ display: 'grid', placeItems: 'center', height: '100vh' }}>
+    <IonSpinner name="crescent" style={{ color: '#fff', transform: 'scale(1.6)' }} />
+  </div>
+);
 
 const App: React.FC = () => (
   <IonApp>
-    <IonReactRouter>
-      <IonRouterOutlet>
+    <AuthProvider>
+      <IonReactRouter>
+        <Suspense fallback={<Cargando />}>
+          <IonRouterOutlet>
+            {/* Públicas */}
+            <Route exact path="/inicio" component={Inicio} />
+            <Route exact path="/proyectos" component={ListaProyectos} />
+            <Route exact path="/proyectos/:id" component={DetalleProyecto} />
+            <Route exact path="/servicios" component={Servicios} />
+            <Route exact path="/noticias" component={Noticias} />
+            <Route exact path="/actividades" component={Actividades} />
+            <Route exact path="/opinion" component={Opinion} />
+            <Route exact path="/login" component={Login} />
+            <Route exact path="/registro" component={Registro} />
 
-        <Route exact path="/inicio" component={Inicio} />
-        <Route exact path="/proyectos" component={Proyectos} />
-        <Route exact path="/noticias" component={Noticias} />
-        <Route exact path="/servicios" component={Servicios} />
-        <Route exact path="/actividades" component={Actividades} />
-        <Route exact path="/opinion" component={Opinion} />
-        
-        <Route exact path="/">
-          <Redirect to="/inicio" />
-        </Route>
-      </IonRouterOutlet>
-    </IonReactRouter>
+            {/* Protegidas (ciudadano autenticado) */}
+            <ProtectedRoute exact path="/proyectos/:id/opinar" component={Votar} />
+            <ProtectedRoute exact path="/perfil" component={Perfil} />
+
+            {/* Protegidas (solo admin) */}
+            <ProtectedRoute exact path="/admin" component={AdminDashboard} soloAdmin />
+            <ProtectedRoute exact path="/admin/reportes" component={AdminReportes} soloAdmin />
+
+            <Route exact path="/">
+              <Redirect to="/inicio" />
+            </Route>
+          </IonRouterOutlet>
+        </Suspense>
+      </IonReactRouter>
+    </AuthProvider>
   </IonApp>
 );
 

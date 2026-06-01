@@ -1,61 +1,44 @@
 import React from 'react';
-import { 
-    IonPage, 
-    IonContent, 
-    IonHeader, 
-    IonToolbar, 
-    IonTitle, 
-    IonCard, 
-    IonCardHeader, 
-    IonCardTitle, 
-    IonCardSubtitle, 
-    IonCardContent, 
-    IonButton 
-} from '@ionic/react';
-import Navbar from '../components/Navbar';
+import Layout from '../components/Layout';
+import { PageHero, fmtFecha } from '../components/ui';
+import { Icons as I } from '../components/Icons';
+import { getNoticias } from '../services/dataService';
 
 const Noticias: React.FC = () => {
-  const noticias = [
-    {
-      id: 1,
-      titulo: "Gran Limpieza del Borde Costero",
-      fecha: "05 de Mayo, 2026",
-      resumen: "Más de 200 voluntarios se reunieron este fin de semana para retirar plásticos y residuos de nuestras playas locales, protegiendo la fauna marina."
-    },
-    {
-      id: 2,
-      titulo: "Nuevo programa de compostaje domiciliario",
-      fecha: "02 de Mayo, 2026",
-      resumen: "La municipalidad entregará 500 composteras gratuitas a las juntas de vecinos inscritas para reducir la huella de carbono comunal."
-    },
-    {
-      id: 3,
-      titulo: "Inauguración de luminarias solares en plazas",
-      fecha: "28 de Abril, 2026",
-      resumen: "Se instalaron postes con paneles solares 100% autónomos en tres plazas principales, mejorando la seguridad y la eficiencia energética."
-    }
-  ];
+  const [feat, ...rest] = getNoticias();
 
   return (
-    <IonPage>
-      <Navbar />
-      <IonContent fullscreen className="ion-padding">
-        <div className="max-w-4xl mx-auto">
-          {noticias.map((noticia) => (
-            <IonCard key={noticia.id} className="glass-panel mb-4">
-              <IonCardHeader>
-                <IonCardSubtitle>{noticia.fecha}</IonCardSubtitle>
-                <IonCardTitle>{noticia.titulo}</IonCardTitle>
-              </IonCardHeader>
-              <IonCardContent>
-                <p className="mb-4 text-gray-700">{noticia.resumen}</p>
-                <IonButton fill="outline" color="success">Leer Noticia Completa</IonButton>
-              </IonCardContent>
-            </IonCard>
-          ))}
+    <Layout>
+      <PageHero kicker="Sala de prensa" title="Noticias Ambientales" sub="Lo último en sustentabilidad, reciclaje y obras de la comuna." />
+      <section className="section">
+        <div className="wrap">
+          {feat && (
+            <article className="card card--pad-lg l-split" style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 0, overflow: 'hidden', padding: 0, marginBottom: 24 }}>
+              <div style={{ position: 'relative', minHeight: 240, background: 'var(--green-900)' }}>
+                <img src="/assets/santo-domingo.jpg" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: .85, position: 'absolute', inset: 0 }} />
+                <span className="badge badge--exec" style={{ position: 'absolute', top: 16, left: 16, background: '#fff' }}>Destacada</span>
+              </div>
+              <div style={{ padding: 'clamp(20px,3vw,34px)' }}>
+                <span className="meta" style={{ fontFamily: 'var(--font-mono)', fontSize: '.78rem' }}><I.Calendar size={15} /> {fmtFecha(feat.fecha)} · {feat.autor}</span>
+                <h2 style={{ margin: '12px 0', color: 'var(--green-800)' }}>{feat.titulo}</h2>
+                <p className="lead">{feat.resumen}</p>
+                <p className="muted" style={{ marginTop: 12 }}>{feat.contenido}</p>
+              </div>
+            </article>
+          )}
+          <div className="grid grid--2">
+            {rest.map((n) => (
+              <article key={n.id} className="card card--pad-lg tile" data-tilt style={{ cursor: 'default' }}>
+                <span className="meta" style={{ fontFamily: 'var(--font-mono)', fontSize: '.76rem' }}><I.Calendar size={14} /> {fmtFecha(n.fecha)} · {n.autor}</span>
+                <h3 style={{ margin: '10px 0 8px', color: 'var(--green-800)' }}>{n.titulo}</h3>
+                <p style={{ color: 'var(--body)' }}>{n.resumen}</p>
+                <p className="muted" style={{ marginTop: 10, fontSize: '.92rem' }}>{n.contenido}</p>
+              </article>
+            ))}
+          </div>
         </div>
-      </IonContent>
-    </IonPage>
+      </section>
+    </Layout>
   );
 };
 

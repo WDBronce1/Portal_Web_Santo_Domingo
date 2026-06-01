@@ -1,50 +1,45 @@
 import React from 'react';
-import { 
-    IonPage, 
-    IonContent, 
-    IonHeader, 
-    IonToolbar, 
-    IonTitle, 
-    IonCard, 
-    IonCardHeader, 
-    IonCardTitle, 
-    IonCardContent, 
-    IonItem, 
-    IonIcon, 
-    IonLabel 
-} from '@ionic/react';
-import Navbar from '../components/Navbar';
+import Layout from '../components/Layout';
+import { PageHero, fmtFecha } from '../components/ui';
+import { Icons as I } from '../components/Icons';
+import { getActividades } from '../services/dataService';
 
 const Actividades: React.FC = () => {
-  const agenda = [
-    { id: 1, titulo: "Taller de Huertos Urbanos", fecha: "10 de Mayo, 2026", hora: "10:00 - 13:00 hrs", ubicacion: "Invernadero Municipal", desc: "Aprende a cultivar tus propios vegetales en espacios reducidos usando botellas recicladas." },
-    { id: 2, titulo: "Caminata de Observación de Aves", fecha: "15 de Mayo, 2026", hora: "08:00 - 11:30 hrs", ubicacion: "Humedal Costero", desc: "Recorrido guiado para identificar especies endémicas y concientizar sobre la protección de humedales." },
-    { id: 3, titulo: "Feria de Emprendimiento Sustentable", fecha: "22 de Mayo, 2026", hora: "11:00 - 18:00 hrs", ubicacion: "Plaza Principal", desc: "Stands de artesanos y pymes locales que trabajan con economía circular y materiales reciclados." }
-  ];
+  const actividades = getActividades();
 
   return (
-    <IonPage>
-        <Navbar s/>
-      <IonContent fullscreen className="ion-padding">
-        <div className="max-w-4xl mx-auto">
-          {agenda.map((act) => (
-            <IonCard key={act.id} className="glass-panel mb-4">
-              <IonCardHeader>
-                <IonCardTitle>{act.titulo}</IonCardTitle>
-              </IonCardHeader>
-              <IonCardContent>
-                <div className="bg-green-50 p-3 rounded mb-3 border border-green-200">
-                  <p><strong>📅 Fecha:</strong> {act.fecha}</p>
-                  <p><strong>⏰ Horario:</strong> {act.hora}</p>
-                  <p><strong>📍 Ubicación:</strong> {act.ubicacion}</p>
+    <Layout>
+      <PageHero kicker="Agenda comunal" title="Agenda de Actividades" sub="Talleres, caminatas y ferias para una comuna más sustentable." />
+      <section className="section">
+        <div className="wrap">
+          <div className="grid grid--3">
+            {actividades.map((a) => {
+              const libres = a.cuposTotales - a.cuposOcupados;
+              const pct = Math.round((a.cuposOcupados / a.cuposTotales) * 100);
+              return (
+                <div key={a.id} className="card card--pad-lg tile" data-tilt style={{ cursor: 'default', display: 'flex', flexDirection: 'column' }}>
+                  <span className="tile__icon"><I.Calendar size={22} /></span>
+                  <h3 style={{ margin: '14px 0 12px', color: 'var(--green-800)' }}>{a.titulo}</h3>
+                  <div className="card card--paper" style={{ padding: '12px 14px' }}>
+                    <span className="meta" style={{ display: 'flex' }}><I.Calendar size={15} /> {fmtFecha(a.fecha)}</span>
+                    <span className="meta" style={{ display: 'flex', marginTop: 6 }}><I.Clock size={15} /> {a.hora}</span>
+                    <span className="meta" style={{ display: 'flex', marginTop: 6 }}><I.Pin size={15} /> {a.ubicacion}</span>
+                  </div>
+                  <p className="muted" style={{ margin: '14px 0', fontSize: '.92rem' }}>{a.descripcion}</p>
+                  <div style={{ marginTop: 'auto' }}>
+                    <div className="row between" style={{ marginBottom: 6 }}>
+                      <span className="meta"><I.Users size={15} /> {libres} cupos disponibles</span>
+                      <span className="muted" style={{ fontSize: '.78rem', fontFamily: 'var(--font-mono)' }}>{pct}%</span>
+                    </div>
+                    <div className="bar-track"><div className="bar-fill" style={{ width: pct + '%' }} /></div>
+                  </div>
                 </div>
-                <p className="text-gray-700">{act.desc}</p>
-              </IonCardContent>
-            </IonCard>
-          ))}
+              );
+            })}
+          </div>
         </div>
-      </IonContent>
-    </IonPage>
+      </section>
+    </Layout>
   );
 };
 
