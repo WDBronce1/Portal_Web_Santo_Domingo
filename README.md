@@ -164,6 +164,19 @@ También es posible registrar una cuenta nueva de Ciudadano desde `/registro`.
 
 ---
 
+### Endpoints
+
+- `/api/proyectos/`
+- `/api/proyectos/:id`
+- `/api/noticias/`
+- `/api/noticias/:id`
+- `/api/opiniones`
+- `/api/opiniones/:id`
+- `/api/actividades`
+- `/api/actividades/:id`
+- `/api/servicios/recoleccion`
+- `/api/servicios/zonas-verdes`
+
 ## Base de datos (PostgreSQL)
 
 El portal está **conectado a una base de datos PostgreSQL real**. Se utiliza
