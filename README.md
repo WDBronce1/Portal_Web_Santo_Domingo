@@ -7,8 +7,11 @@ proyectos, y a los funcionarios municipales gestionar contenido y consultar repo
 consolidados de participación.
 
 Construida con **Ionic React** como **Single Page Application**, bajo el paradigma
-*Mobile-First*, con autenticación simulada por **RUT + Clave Única** y control de acceso por
-roles (Ciudadano / Administrador).
+*Mobile-First*, con autenticación por **RUT + Clave Única** y control de acceso por
+roles (Ciudadano / Administrador). La persistencia se realiza sobre una base de datos
+**PostgreSQL** real (ver sección [Base de datos](#base-de-datos-postgresql)).
+
+> **🌐 Aplicación en producción:** https://portal-santo-domingo.vercel.app
 
 ---
 
@@ -45,11 +48,13 @@ Patrimonial") aplicado sobre la arquitectura Ionic React del proyecto. Incluye:
 | Build tool | Vite 5 |
 | Lenguaje | TypeScript |
 | Runtime nativo | Capacitor 8 |
+| **Base de datos** | **PostgreSQL 17** (vía PGlite — PostgreSQL compilado a WebAssembly) |
 | Estilos | CSS propio (`src/theme/app.css` + `variables.css`) + variables de Ionic |
 | Testing | Vitest (unit) · Cypress (e2e) |
 
-La persistencia de datos es **simulada con `localStorage`** (capa de servicios síncrona),
-por lo que el proyecto se ejecuta de forma autónoma sin necesidad de un backend.
+Los datos del portal se persisten en una base de datos **PostgreSQL** real (ver la
+sección [Base de datos](#base-de-datos-postgresql)). El proyecto se ejecuta de forma
+autónoma, **sin necesidad de levantar un servidor de base de datos aparte**.
 
 ---
 
@@ -64,7 +69,11 @@ src/
 ├── pages/                  # Pantallas: Inicio, Servicios, Noticias, Actividades,
 │   ├── Proyectos/          #   Opinión, Login, Registro, Perfil, Votar,
 │   └── Admin/              #   Proyectos (lista/detalle) y Admin (Dashboard/Reportes)
-├── services/               # authService y dataService (localStorage)
+├── services/               # Capa de datos:
+│   ├── db.ts               #   conexión PostgreSQL (PGlite) + esquema + CRUD
+│   ├── bootstrap.ts        #   hidrata la caché local desde PostgreSQL al arrancar
+│   ├── dataService.ts      #   lógica de dominio (lee de caché, escribe en PostgreSQL)
+│   └── authService.ts      #   autenticación y registro de usuarios
 ├── theme/                  # Sistema visual: app.css + variables.css
 ├── types/                  # Tipos TypeScript del dominio
 └── utils/                  # Utilidades (validación/sanitización)
@@ -155,10 +164,44 @@ También es posible registrar una cuenta nueva de Ciudadano desde `/registro`.
 
 ---
 
+## Base de datos (PostgreSQL)
+
+El portal está **conectado a una base de datos PostgreSQL real**. Se utiliza
+[**PGlite**](https://pglite.dev) (`@electric-sql/pglite`), que es el motor **PostgreSQL 17
+compilado a WebAssembly**: ejecuta un PostgreSQL completo (SQL estándar, tipos, claves
+primarias, `INSERT … ON CONFLICT`, etc.) y persiste los datos en **IndexedDB** del navegador.
+Esto permite cumplir el requisito de "página conectada a una base de datos" **sin costo, sin
+credenciales y sin desplegar un servidor de BD aparte**.
+
+**Arquitectura (caché sobre base de datos):**
+
+1. **Esquema** — `src/services/db.ts` crea las tablas al iniciar:
+   `sd_proyectos`, `sd_noticias`, `sd_actividades`, `sd_opiniones`, `sd_solicitudes`
+   y `sd_usuarios`.
+2. **Hidratación** — al arrancar, `src/services/bootstrap.ts` lee las tablas desde
+   PostgreSQL y refresca la caché local. Si una tabla está vacía, la siembra con los datos
+   iniciales (*seed*) y los inserta en la base.
+3. **Lecturas** — las pantallas leen de la caché (sincrónica) → la navegación es instantánea.
+4. **Escrituras** — crear/editar/eliminar (proyectos, noticias, actividades, opiniones,
+   solicitudes y registro de usuarios) actualiza la UI y **persiste en PostgreSQL**
+   mediante `upsertRow` / `deleteRow`.
+5. **Tolerancia a fallos** — la app renderiza de inmediato y la base se hidrata en segundo
+   plano; si la BD tardara o fallara, la página sigue funcionando con la caché local.
+
+> El esquema usa identificadores entre comillas en *camelCase* (p. ej. `"duracionMeses"`,
+> `"usuarioRut"`) para que cada fila de PostgreSQL mapee 1:1 con los tipos de TypeScript.
+
+---
+
 ## Despliegue
 
-El proyecto está preparado para desplegarse en **Vercel** como SPA (ver `vercel.json`, que
-incluye el *rewrite* hacia `index.html` para soportar enlaces profundos).
+El proyecto está desplegado en **Vercel** como SPA (ver `vercel.json`, que incluye el
+*rewrite* hacia `index.html` para soportar enlaces profundos):
+
+**🌐 https://portal-santo-domingo.vercel.app**
+
+La base de datos PostgreSQL (PGlite) viaja dentro del propio bundle de la aplicación, por
+lo que el despliegue es **estático** y no requiere infraestructura de servidor adicional.
 
 ---
 

@@ -3,9 +3,10 @@
 // Arquitectura lista para reemplazar por API real con JWT (ver dataService.api()).
 
 import type { Rol, Usuario } from '../types';
+import { upsertRow } from './db';
 
 const SESSION_KEY = 'sd_session';
-const USERS_KEY = 'sd_usuarios';
+export const USERS_KEY = 'sd_usuarios';
 
 // RUTs que el municipio reconoce como funcionarios (rol admin).
 const ADMIN_RUTS = ['11.111.111-1'];
@@ -75,29 +76,32 @@ function hashDemo(clave: string): string {
   return `sim$${h}`;
 }
 
+// Usuarios precargados (semilla). Se usan para sembrar la base de datos
+// PostgreSQL la primera vez y como respaldo de la caché local.
+export const SEED_USUARIOS: UsuarioConClave[] = [
+  {
+    rut: '11.111.111-1',
+    nombre: 'Funcionario Municipal',
+    email: 'admin@santodomingo.cl',
+    region: 'Valparaíso',
+    comuna: 'Santo Domingo',
+    rol: 'admin',
+    claveHash: hashDemo('admin1234'),
+  },
+  {
+    rut: '12.345.678-5',
+    nombre: 'Vecina Ciudadana',
+    email: 'vecina@correo.cl',
+    region: 'Valparaíso',
+    comuna: 'Santo Domingo',
+    rol: 'ciudadano',
+    claveHash: hashDemo('clave1234'),
+  },
+];
+
 function seedUsuarios(): void {
   if (leerUsuarios().length > 0) return;
-  const semilla: UsuarioConClave[] = [
-    {
-      rut: '11.111.111-1',
-      nombre: 'Funcionario Municipal',
-      email: 'admin@santodomingo.cl',
-      region: 'Valparaíso',
-      comuna: 'Santo Domingo',
-      rol: 'admin',
-      claveHash: hashDemo('admin1234'),
-    },
-    {
-      rut: '12.345.678-5',
-      nombre: 'Vecina Ciudadana',
-      email: 'vecina@correo.cl',
-      region: 'Valparaíso',
-      comuna: 'Santo Domingo',
-      rol: 'ciudadano',
-      claveHash: hashDemo('clave1234'),
-    },
-  ];
-  guardarUsuarios(semilla);
+  guardarUsuarios(SEED_USUARIOS);
 }
 seedUsuarios();
 
@@ -143,6 +147,10 @@ export function registrar(input: RegistroInput): Resultado<Usuario> {
   };
   usuarios.push(usuario);
   guardarUsuarios(usuarios);
+  // Persistir el usuario en PostgreSQL (segundo plano; no bloquea el registro).
+  upsertRow('sd_usuarios', 'rut', usuario as unknown as Record<string, unknown>).catch(
+    (err) => console.warn('[BD] No se pudo persistir el usuario en PostgreSQL:', err),
+  );
   const { claveHash, ...publico } = usuario;
   void claveHash;
   iniciarSesion(publico);

@@ -33,3 +33,7 @@ yarn-error.log*
 
 # Config local de Claude Code
 .claude/
+
+# Artefactos de build y material de trabajo (no forman parte de la entrega)
+build.log
+/entrega-claude-design/
