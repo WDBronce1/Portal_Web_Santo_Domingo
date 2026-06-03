@@ -6,8 +6,8 @@ interface AuthContextValue {
   usuario: Usuario | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
-  login: (rut: string, clave: string) => auth.Resultado<Usuario>;
-  registrar: (input: auth.RegistroInput) => auth.Resultado<Usuario>;
+  login: (rut: string, clave: string) => Promise<auth.Resultado<Usuario>>;
+  registrar: (input: auth.RegistroInput) => Promise<auth.Resultado<Usuario>>;
   logout: () => void;
   /** Ruta a la que volver tras un login forzado por el gateway de seguridad. */
   intentoPendiente: string | null;
@@ -20,14 +20,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [usuario, setUsuario] = useState<Usuario | null>(() => auth.getSesion());
   const [intentoPendiente, setIntentoPendiente] = useState<string | null>(null);
 
-  const login = useCallback((rut: string, clave: string) => {
-    const res = auth.login(rut, clave);
+  const login = useCallback(async (rut: string, clave: string) => {
+    const res = await auth.login(rut, clave);
     if (res.ok && res.data) setUsuario(res.data);
     return res;
   }, []);
 
-  const registrar = useCallback((input: auth.RegistroInput) => {
-    const res = auth.registrar(input);
+  const registrar = useCallback(async (input: auth.RegistroInput) => {
+    const res = await auth.registrar(input);
     if (res.ok && res.data) setUsuario(res.data);
     return res;
   }, []);

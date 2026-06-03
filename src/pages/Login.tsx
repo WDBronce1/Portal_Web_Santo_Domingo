@@ -13,8 +13,8 @@ const Login: React.FC = () => {
   const [clave, setClave] = useState('');
   const [error, setError] = useState('');
 
-  const ingresar = () => {
-    const res = login(rut, clave);
+  const ingresar = async () => {
+    const res = await login(rut, clave);
     if (!res.ok) { setError(res.error ?? 'No fue posible iniciar sesión.'); return; }
     const destino = intentoPendiente ?? '/inicio';
     setIntentoPendiente(null);

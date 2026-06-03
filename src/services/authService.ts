@@ -4,6 +4,7 @@
 
 import type { Rol, Usuario } from '../types';
 import { upsertRow } from './db';
+import { apiClient } from './apiClient';
 
 const SESSION_KEY = 'sd_session';
 export const USERS_KEY = 'sd_usuarios';
@@ -126,12 +127,38 @@ export function rolPorRut(rut: string): Rol {
   return ADMIN_RUTS.includes(formatearRut(rut)) ? 'admin' : 'ciudadano';
 }
 
-export function registrar(input: RegistroInput): Resultado<Usuario> {
+export async function registrar(input: RegistroInput): Promise<Resultado<Usuario>> {
   const rut = formatearRut(input.rut);
   if (!validarRut(rut)) return { ok: false, error: 'El RUT ingresado no es válido.' };
   if (input.clave.length < 6)
     return { ok: false, error: 'La Clave Única debe tener al menos 6 caracteres.' };
 
+  // Intentamos registrar con la API real
+  try {
+    const res = await apiClient.post('/api/auth/register', {
+      rut,
+      nombre: input.nombre.trim(),
+      email: input.email.trim(),
+      region: input.region,
+      comuna: input.comuna,
+      password: input.clave
+    });
+    if (res.status === 201 && res.data) {
+      const { token, usuario } = res.data;
+      localStorage.setItem('sd_token', token);
+      iniciarSesion(usuario);
+      return { ok: true, data: usuario };
+    }
+  } catch (err: any) {
+    const errorMsg = err.response?.data?.error ?? 'Error de conexión con el servidor.';
+    console.warn('[Auth API] Falló el registro real, intentando registro local de simulación...', err);
+    // Si es un error de cliente (como que el usuario ya existe), informamos al usuario de inmediato
+    if (err.response?.status === 400) {
+      return { ok: false, error: errorMsg };
+    }
+  }
+
+  // Fallback local (simulado)
   const usuarios = leerUsuarios();
   if (usuarios.some((u) => u.rut === rut))
     return { ok: false, error: 'Ya existe una cuenta registrada con este RUT.' };
@@ -147,21 +174,44 @@ export function registrar(input: RegistroInput): Resultado<Usuario> {
   };
   usuarios.push(usuario);
   guardarUsuarios(usuarios);
-  // Persistir el usuario en PostgreSQL (segundo plano; no bloquea el registro).
+  
   upsertRow('sd_usuarios', 'rut', usuario as unknown as Record<string, unknown>).catch(
-    (err) => console.warn('[BD] No se pudo persistir el usuario en PostgreSQL:', err),
+    (err) => console.warn('[BD] No se pudo persistir el usuario en PostgreSQL local:', err),
   );
+  
   const { claveHash, ...publico } = usuario;
   void claveHash;
   iniciarSesion(publico);
   return { ok: true, data: publico };
 }
 
-/** Login con Clave Única simulada. */
-export function login(rut: string, clave: string): Resultado<Usuario> {
+/** Login con Clave Única real/simulada. */
+export async function login(rut: string, clave: string): Promise<Resultado<Usuario>> {
   const rutFmt = formatearRut(rut);
   if (!validarRut(rutFmt)) return { ok: false, error: 'El RUT ingresado no es válido.' };
 
+  // Intentamos iniciar sesión con la API real
+  try {
+    const res = await apiClient.post('/api/auth/login', {
+      rut: rutFmt,
+      password: clave
+    });
+    if (res.status === 200 && res.data) {
+      const { token, usuario } = res.data;
+      localStorage.setItem('sd_token', token);
+      iniciarSesion(usuario);
+      return { ok: true, data: usuario };
+    }
+  } catch (err: any) {
+    const errorMsg = err.response?.data?.error ?? 'Error de conexión con el servidor.';
+    console.warn('[Auth API] Falló el login real, intentando login local de simulación...', err);
+    // Si es un error de autenticación real (contraseña incorrecta o no registrado), lo informamos
+    if (err.response?.status === 401 || err.response?.status === 404) {
+      return { ok: false, error: errorMsg };
+    }
+  }
+
+  // Fallback local (simulado)
   const usuarios = leerUsuarios();
   const encontrado = usuarios.find((u) => u.rut === rutFmt);
   if (!encontrado)

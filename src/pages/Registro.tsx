@@ -23,7 +23,7 @@ const Registro: React.FC = () => {
 
   const set = (k: keyof typeof f, v: string | boolean) => setF({ ...f, [k]: v });
 
-  const enviar = () => {
+  const enviar = async () => {
     if (!f.nombre.trim()) return setError('Ingresa tu nombre de usuario.');
     if (!validarRut(f.rut)) return setError('El RUT ingresado no es válido (revisa el dígito verificador).');
     if (!isEmail(f.email)) return setError('Ingresa un correo electrónico válido.');
@@ -31,7 +31,7 @@ const Registro: React.FC = () => {
     if (f.clave !== f.confirmar) return setError('Las contraseñas no coinciden.');
     if (!f.terminos) return setError('Debes aceptar los términos y condiciones.');
 
-    const res = registrar({
+    const res = await registrar({
       nombre: f.nombre, rut: f.rut, email: f.email,
       region: f.region, comuna: f.comuna, clave: f.clave,
     });

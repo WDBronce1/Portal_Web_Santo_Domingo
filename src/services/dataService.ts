@@ -20,6 +20,7 @@ import type {
 } from '../types';
 import { sanitizeText } from '../utils/sanitize';
 import { upsertRow, deleteRow } from './db';
+import { apiClient } from './apiClient';
 
 export const API_BASE = (import.meta as any).env?.VITE_API_BASE ?? 'http://localhost:3264';
 
@@ -35,6 +36,11 @@ export const KEYS = {
 // pero no rompen la experiencia: la caché local ya tiene el dato.
 function pushDb(op: Promise<void>): void {
   op.catch((err) => console.warn('[BD] No se pudo persistir en PostgreSQL:', err));
+}
+
+// Empuja una escritura a la API de Express real en segundo plano.
+function pushApi(op: Promise<any>): void {
+  op.catch((err) => console.warn('[API] No se pudo sincronizar con la API real:', err));
 }
 
 function load<T>(key: string, seed: T[]): T[] {
@@ -114,17 +120,45 @@ export function crearProyecto(input: Omit<Proyecto, 'id'>): Proyecto {
   items.push(nuevo);
   save(KEYS.proyectos, items);
   pushDb(upsertRow('sd_proyectos', 'id', nuevo as unknown as Record<string, unknown>));
+  
+  // API Integration
+  pushApi(
+    apiClient.post('/api/proyectos', {
+      nombre: nuevo.nombre,
+      rutEmpresa: '11.111.111-1', // RUT de empresa por defecto para la entrega
+      ubicacion: nuevo.sector,    // mapea sector a ubicación en la API
+      fechaInicio: nuevo.fechaInicio,
+      duracionMeses: nuevo.duracionMeses,
+      estado: nuevo.estado,
+    })
+  );
+  
   return nuevo;
 }
 export function actualizarProyecto(id: number, cambios: Partial<Proyecto>): void {
   const items = getProyectos().map((p) => (p.id === id ? { ...p, ...cambios } : p));
   save(KEYS.proyectos, items);
   const actualizado = items.find((p) => p.id === id);
-  if (actualizado) pushDb(upsertRow('sd_proyectos', 'id', actualizado as unknown as Record<string, unknown>));
+  if (actualizado) {
+    pushDb(upsertRow('sd_proyectos', 'id', actualizado as unknown as Record<string, unknown>));
+    
+    // API Integration
+    pushApi(
+      apiClient.put(`/api/proyectos/${id}`, {
+        nombre: actualizado.nombre,
+        rutEmpresa: '11.111.111-1',
+        ubicacion: actualizado.sector,
+        estado: actualizado.estado,
+      })
+    );
+  }
 }
 export function eliminarProyecto(id: number): void {
   save(KEYS.proyectos, getProyectos().filter((p) => p.id !== id));
   pushDb(deleteRow('sd_proyectos', 'id', id));
+  
+  // API Integration
+  pushApi(apiClient.delete(`/api/proyectos/${id}`));
 }
 
 // ---------- Noticias ----------
@@ -140,11 +174,24 @@ export function crearNoticia(input: Omit<Noticia, 'id'>): Noticia {
   items.push(nueva);
   save(KEYS.noticias, items);
   pushDb(upsertRow('sd_noticias', 'id', nueva as unknown as Record<string, unknown>));
+  
+  // API Integration
+  pushApi(
+    apiClient.post('/api/noticias', {
+      titulo: nueva.titulo,
+      contenido: nueva.contenido,
+      nombrePeriodista: nueva.autor,
+    })
+  );
+  
   return nueva;
 }
 export function eliminarNoticia(id: number): void {
   save(KEYS.noticias, load(KEYS.noticias, SEED_NOTICIAS).filter((n) => n.id !== id));
   pushDb(deleteRow('sd_noticias', 'id', id));
+  
+  // API Integration
+  pushApi(apiClient.delete(`/api/noticias/${id}`));
 }
 
 // ---------- Actividades ----------
@@ -157,11 +204,26 @@ export function crearActividad(input: Omit<Actividad, 'id'>): Actividad {
   items.push(nueva);
   save(KEYS.actividades, items);
   pushDb(upsertRow('sd_actividades', 'id', nueva as unknown as Record<string, unknown>));
+  
+  // API Integration
+  pushApi(
+    apiClient.post('/api/actividades', {
+      titulo: nueva.titulo,
+      descripcion: nueva.descripcion,
+      ubicacion: nueva.ubicacion,
+      fecha: nueva.fecha,
+      cuposTotales: nueva.cuposTotales,
+    })
+  );
+  
   return nueva;
 }
 export function eliminarActividad(id: number): void {
   save(KEYS.actividades, getActividades().filter((a) => a.id !== id));
   pushDb(deleteRow('sd_actividades', 'id', id));
+  
+  // API Integration
+  pushApi(apiClient.delete(`/api/actividades/${id}`));
 }
 
 // ---------- Opiniones (votación ciudadana) ----------
@@ -182,6 +244,17 @@ export function crearOpinion(input: Omit<Opinion, 'id' | 'fecha'>): Opinion {
   items.push(nueva);
   save(KEYS.opiniones, items);
   pushDb(upsertRow('sd_opiniones', 'id', nueva as unknown as Record<string, unknown>));
+  
+  // API Integration
+  pushApi(
+    apiClient.post('/api/opiniones', {
+      calificacion: nueva.calificacion,
+      comentario: nueva.comentario,
+      proyectoId: nueva.proyectoId,
+      usuarioRut: nueva.usuarioRut,
+    })
+  );
+  
   return nueva;
 }
 
@@ -210,6 +283,17 @@ export function crearSolicitud(input: {
   items.push(nueva);
   save(KEYS.solicitudes, items);
   pushDb(upsertRow('sd_solicitudes', 'id', nueva as unknown as Record<string, unknown>));
+  
+  // API Integration (solo tipo basura/recolección en el backend)
+  pushApi(
+    apiClient.post('/api/servicios/recoleccion', {
+      tipoBasura: nueva.tipo,
+      ubicacion: nueva.direccion,
+      motivo: nueva.detalle,
+      usuarioRut: nueva.usuarioRut,
+    })
+  );
+  
   return nueva;
 }
 

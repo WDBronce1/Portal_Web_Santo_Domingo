@@ -1,0 +1,504 @@
+{
+	"info": {
+		"_postman_id": "8b52f360-128a-4424-aa6c-db7d9ef368ab",
+		"name": "Portal Ambiental Santo Domingo - EP2",
+		"description": "Colección de peticiones HTTP para probar los endpoints de la API del Portal Ambiental Participativo de la Municipalidad de Santo Domingo. Incluye autenticación mediante JWT, inyección de tokens y diferenciación de roles.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Autenticación",
+			"item": [
+				{
+					"name": "Registrar Usuario Ciudadano",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"rut\": \"12.345.678-5\",\n    \"nombre\": \"Vecina Ciudadana\",\n    \"email\": \"vecina@correo.cl\",\n    \"region\": \"Valparaíso\",\n    \"comuna\": \"Santo Domingo\",\n    \"password\": \"clave1234\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login Ciudadano",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if(jsonData.token) {",
+									"    pm.globals.set(\"token_ciudadano\", jsonData.token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"rut\": \"12.345.678-5\",\n    \"password\": \"clave1234\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login Funcionario (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if(jsonData.token) {",
+									"    pm.globals.set(\"token_admin\", jsonData.token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"rut\": \"11.111.111-1\",\n    \"password\": \"admin1234\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Proyectos",
+			"item": [
+				{
+					"name": "Obtener Proyectos (Público)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/proyectos",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"proyectos"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Crear Proyecto (Requiere Admin)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_admin}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"nombre\": \"Restauración Humedal Río Maipo\",\n    \"rutEmpresa\": \"76.543.210-K\",\n    \"ubicacion\": \"Borde Río\",\n    \"fechaInicio\": \"2026-06-15\",\n    \"duracionMeses\": 12,\n    \"estado\": \"En Planificación\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/proyectos",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"proyectos"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Editar Proyecto (Requiere Admin)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_admin}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"nombre\": \"Restauración Humedal Río Maipo - Fase II\",\n    \"rutEmpresa\": \"76.543.210-K\",\n    \"ubicacion\": \"Borde Río\",\n    \"estado\": \"Ejecución\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/proyectos/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"proyectos",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Eliminar Proyecto (Requiere Admin)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_admin}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/proyectos/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"proyectos",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Noticias",
+			"item": [
+				{
+					"name": "Obtener Noticias (Público)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/noticias",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"noticias"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Crear Noticia (Requiere Admin)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_admin}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"titulo\": \"Nueva Ordenanza de Reciclaje Santo Domingo\",\n    \"contenido\": \"La Municipalidad ha promulgado un decreto que obliga la separación en origen de residuos orgánicos en toda la comuna a partir del próximo mes.\",\n    \"nombrePeriodista\": \"Juan Valdés\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/noticias",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"noticias"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Actividades",
+			"item": [
+				{
+					"name": "Obtener Actividades (Público)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/actividades",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"actividades"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Crear Actividad (Requiere Admin)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_admin}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"titulo\": \"Taller de Compostaje Domiciliario\",\n    \"descripcion\": \"Aprende a fabricar abono orgánico con tus residuos de cocina de forma sencilla y ecológica.\",\n    \"ubicacion\": \"Vivero Municipal\",\n    \"fecha\": \"2026-06-20T10:00:00Z\",\n    \"cuposTotales\": 30\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/actividades",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"actividades"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Opiniones",
+			"item": [
+				{
+					"name": "Obtener Opiniones (Público)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/opiniones",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"opiniones"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Publicar Opinión (Requiere Ciudadano o Admin)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_ciudadano}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"calificacion\": 5,\n    \"comentario\": \"Excelente iniciativa para proteger la flora local del humedal!\",\n    \"proyectoId\": 1,\n    \"usuarioRut\": \"12.345.678-5\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/opiniones",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"opiniones"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Servicios Ciudadanos",
+			"item": [
+				{
+					"name": "Solicitud Recolección Basura (Requiere Ciudadano)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_ciudadano}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tipoBasura\": \"Escombros\",\n    \"ubicacion\": \"Calle Los Tulipanes 450, Santo Domingo\",\n    \"motivo\": \"Retiro de restos de remodelación de jardín doméstico.\",\n    \"usuarioRut\": \"12.345.678-5\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/servicios/recoleccion",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"servicios",
+								"recoleccion"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3264",
+			"type": "string"
+		}
+	]
+}
