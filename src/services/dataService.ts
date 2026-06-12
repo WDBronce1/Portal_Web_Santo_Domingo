@@ -17,6 +17,7 @@ import type {
   Solicitud,
   TipoSolicitud,
   ZonaVerde,
+  EstadoProyecto,
 } from '../types';
 import { sanitizeText } from '../utils/sanitize';
 import { upsertRow, deleteRow } from './db';
@@ -114,51 +115,64 @@ export function getProyectos(): Proyecto[] {
 export function getProyecto(id: number): Proyecto | undefined {
   return getProyectos().find((p) => p.id === id);
 }
-export function crearProyecto(input: Omit<Proyecto, 'id'>): Proyecto {
+export async function crearProyecto(input: Omit<Proyecto, 'id'>): Promise<Proyecto> {
+  let nuevo: Proyecto;
+  try {
+    const res = await apiClient.post('/api/proyectos', {
+      nombre: sanitizeText(input.nombre, 120),
+      rutEmpresa: '11.111.111-1', // RUT de empresa por defecto para la entrega
+      ubicacion: input.sector,    // mapea sector a ubicación en la API
+      fechaInicio: input.fechaInicio,
+      duracionMeses: input.duracionMeses,
+      estado: input.estado,
+    });
+    nuevo = {
+      id: res.data.id,
+      nombre: res.data.nombre,
+      sector: res.data.ubicacion,
+      estado: res.data.estado as EstadoProyecto,
+      duracionMeses: res.data.duracionMeses,
+      fechaInicio: res.data.fechaInicio.slice(0, 10),
+      descripcion: sanitizeText(input.descripcion, 800)
+    };
+  } catch (err) {
+    console.warn('[API] Falló creación real, usando local/IndexedDB...', err);
+    const items = getProyectos();
+    nuevo = { ...input, id: nextId(items), nombre: sanitizeText(input.nombre, 120), descripcion: sanitizeText(input.descripcion, 800) };
+  }
+
   const items = getProyectos();
-  const nuevo: Proyecto = { ...input, id: nextId(items), nombre: sanitizeText(input.nombre, 120), descripcion: sanitizeText(input.descripcion, 800) };
   items.push(nuevo);
   save(KEYS.proyectos, items);
-  pushDb(upsertRow('sd_proyectos', 'id', nuevo as unknown as Record<string, unknown>));
-  
-  // API Integration
-  pushApi(
-    apiClient.post('/api/proyectos', {
-      nombre: nuevo.nombre,
-      rutEmpresa: '11.111.111-1', // RUT de empresa por defecto para la entrega
-      ubicacion: nuevo.sector,    // mapea sector a ubicación en la API
-      fechaInicio: nuevo.fechaInicio,
-      duracionMeses: nuevo.duracionMeses,
-      estado: nuevo.estado,
-    })
-  );
-  
+  await upsertRow('sd_proyectos', 'id', nuevo as unknown as Record<string, unknown>);
   return nuevo;
 }
-export function actualizarProyecto(id: number, cambios: Partial<Proyecto>): void {
+export async function actualizarProyecto(id: number, cambios: Partial<Proyecto>): Promise<void> {
   const items = getProyectos().map((p) => (p.id === id ? { ...p, ...cambios } : p));
   save(KEYS.proyectos, items);
   const actualizado = items.find((p) => p.id === id);
   if (actualizado) {
-    pushDb(upsertRow('sd_proyectos', 'id', actualizado as unknown as Record<string, unknown>));
-    
-    // API Integration
-    pushApi(
-      apiClient.put(`/api/proyectos/${id}`, {
+    await upsertRow('sd_proyectos', 'id', actualizado as unknown as Record<string, unknown>);
+    try {
+      await apiClient.put(`/api/proyectos/${id}`, {
         nombre: actualizado.nombre,
         rutEmpresa: '11.111.111-1',
         ubicacion: actualizado.sector,
         estado: actualizado.estado,
-      })
-    );
+      });
+    } catch (err) {
+      console.warn('[API] Falló la actualización en la API real:', err);
+    }
   }
 }
-export function eliminarProyecto(id: number): void {
+export async function eliminarProyecto(id: number): Promise<void> {
   save(KEYS.proyectos, getProyectos().filter((p) => p.id !== id));
-  pushDb(deleteRow('sd_proyectos', 'id', id));
-  
-  // API Integration
-  pushApi(apiClient.delete(`/api/proyectos/${id}`));
+  await deleteRow('sd_proyectos', 'id', id);
+  try {
+    await apiClient.delete(`/api/proyectos/${id}`);
+  } catch (err) {
+    console.warn('[API] Falló la eliminación en la API real:', err);
+  }
 }
 
 // ---------- Noticias ----------
@@ -168,62 +182,88 @@ export function getNoticias(): Noticia[] {
 export function getNoticia(id: number): Noticia | undefined {
   return getNoticias().find((n) => n.id === id);
 }
-export function crearNoticia(input: Omit<Noticia, 'id'>): Noticia {
-  const items = load(KEYS.noticias, SEED_NOTICIAS);
-  const nueva: Noticia = { ...input, id: nextId(items), titulo: sanitizeText(input.titulo, 120), resumen: sanitizeText(input.resumen, 300), contenido: sanitizeText(input.contenido, 2000) };
+export async function crearNoticia(input: Omit<Noticia, 'id'>): Promise<Noticia> {
+  let nueva: Noticia;
+  try {
+    const res = await apiClient.post('/api/noticias', {
+      titulo: sanitizeText(input.titulo, 120),
+      contenido: sanitizeText(input.contenido, 2000),
+      nombrePeriodista: input.autor,
+    });
+    nueva = {
+      id: res.data.id,
+      titulo: res.data.titulo,
+      contenido: res.data.contenido,
+      autor: res.data.nombrePeriodista,
+      resumen: sanitizeText(input.resumen, 300),
+      fecha: res.data.fechaPublicacion ? res.data.fechaPublicacion.slice(0, 10) : new Date().toISOString().slice(0, 10),
+    };
+  } catch (err) {
+    console.warn('[API] Falló la publicación de noticia real, usando local/IndexedDB...', err);
+    const items = getNoticias();
+    nueva = { ...input, id: nextId(items), titulo: sanitizeText(input.titulo, 120), resumen: sanitizeText(input.resumen, 300), contenido: sanitizeText(input.contenido, 2000) };
+  }
+
+  const items = getNoticias();
   items.push(nueva);
   save(KEYS.noticias, items);
-  pushDb(upsertRow('sd_noticias', 'id', nueva as unknown as Record<string, unknown>));
-  
-  // API Integration
-  pushApi(
-    apiClient.post('/api/noticias', {
-      titulo: nueva.titulo,
-      contenido: nueva.contenido,
-      nombrePeriodista: nueva.autor,
-    })
-  );
-  
+  await upsertRow('sd_noticias', 'id', nueva as unknown as Record<string, unknown>);
   return nueva;
 }
-export function eliminarNoticia(id: number): void {
+export async function eliminarNoticia(id: number): Promise<void> {
   save(KEYS.noticias, load(KEYS.noticias, SEED_NOTICIAS).filter((n) => n.id !== id));
-  pushDb(deleteRow('sd_noticias', 'id', id));
-  
-  // API Integration
-  pushApi(apiClient.delete(`/api/noticias/${id}`));
+  await deleteRow('sd_noticias', 'id', id);
+  try {
+    await apiClient.delete(`/api/noticias/${id}`);
+  } catch (err) {
+    console.warn('[API] Falló la eliminación en la API real:', err);
+  }
 }
 
 // ---------- Actividades ----------
 export function getActividades(): Actividad[] {
   return load(KEYS.actividades, SEED_ACTIVIDADES);
 }
-export function crearActividad(input: Omit<Actividad, 'id'>): Actividad {
+export async function crearActividad(input: Omit<Actividad, 'id'>): Promise<Actividad> {
+  let nueva: Actividad;
+  try {
+    const res = await apiClient.post('/api/actividades', {
+      titulo: sanitizeText(input.titulo, 120),
+      descripcion: sanitizeText(input.descripcion, 800),
+      ubicacion: input.ubicacion,
+      fecha: input.fecha,
+      cuposTotales: input.cuposTotales,
+    });
+    nueva = {
+      id: res.data.id,
+      titulo: res.data.titulo,
+      descripcion: res.data.descripcion,
+      ubicacion: res.data.ubicacion,
+      fecha: res.data.fecha.slice(0, 10),
+      hora: input.hora,
+      cuposTotales: res.data.cuposTotales,
+      cuposOcupados: res.data.cuposOcupados,
+    };
+  } catch (err) {
+    console.warn('[API] Falló la creación de actividad real, usando local/IndexedDB...', err);
+    const items = getActividades();
+    nueva = { ...input, id: nextId(items), titulo: sanitizeText(input.titulo, 120), descripcion: sanitizeText(input.descripcion, 800) };
+  }
+
   const items = getActividades();
-  const nueva: Actividad = { ...input, id: nextId(items), titulo: sanitizeText(input.titulo, 120), descripcion: sanitizeText(input.descripcion, 800) };
   items.push(nueva);
   save(KEYS.actividades, items);
-  pushDb(upsertRow('sd_actividades', 'id', nueva as unknown as Record<string, unknown>));
-  
-  // API Integration
-  pushApi(
-    apiClient.post('/api/actividades', {
-      titulo: nueva.titulo,
-      descripcion: nueva.descripcion,
-      ubicacion: nueva.ubicacion,
-      fecha: nueva.fecha,
-      cuposTotales: nueva.cuposTotales,
-    })
-  );
-  
+  await upsertRow('sd_actividades', 'id', nueva as unknown as Record<string, unknown>);
   return nueva;
 }
-export function eliminarActividad(id: number): void {
+export async function eliminarActividad(id: number): Promise<void> {
   save(KEYS.actividades, getActividades().filter((a) => a.id !== id));
-  pushDb(deleteRow('sd_actividades', 'id', id));
-  
-  // API Integration
-  pushApi(apiClient.delete(`/api/actividades/${id}`));
+  await deleteRow('sd_actividades', 'id', id);
+  try {
+    await apiClient.delete(`/api/actividades/${id}`);
+  } catch (err) {
+    console.warn('[API] Falló la eliminación de actividad real:', err);
+  }
 }
 
 // ---------- Opiniones (votación ciudadana) ----------
@@ -233,28 +273,39 @@ export function getOpiniones(): Opinion[] {
 export function getOpinionesDeProyecto(proyectoId: number): Opinion[] {
   return getOpiniones().filter((o) => o.proyectoId === proyectoId);
 }
-export function crearOpinion(input: Omit<Opinion, 'id' | 'fecha'>): Opinion {
+export async function crearOpinion(input: Omit<Opinion, 'id' | 'fecha'>): Promise<Opinion> {
+  let nueva: Opinion;
+  try {
+    const res = await apiClient.post('/api/opiniones', {
+      calificacion: input.calificacion,
+      comentario: sanitizeText(input.comentario, 500),
+      proyectoId: input.proyectoId,
+      usuarioRut: input.usuarioRut,
+    });
+    nueva = {
+      id: res.data.id,
+      proyectoId: res.data.proyectoId,
+      usuarioRut: res.data.usuarioRut,
+      usuarioNombre: input.usuarioNombre,
+      calificacion: res.data.calificacion,
+      comentario: res.data.comentario,
+      fecha: new Date().toISOString().slice(0, 10),
+    };
+  } catch (err) {
+    console.warn('[API] Falló la creación de opinión real, usando local/IndexedDB...', err);
+    const items = getOpiniones();
+    nueva = {
+      ...input,
+      id: nextId(items),
+      comentario: sanitizeText(input.comentario, 500),
+      fecha: new Date().toISOString().slice(0, 10),
+    };
+  }
+
   const items = getOpiniones();
-  const nueva: Opinion = {
-    ...input,
-    id: nextId(items),
-    comentario: sanitizeText(input.comentario, 500),
-    fecha: new Date().toISOString().slice(0, 10),
-  };
   items.push(nueva);
   save(KEYS.opiniones, items);
-  pushDb(upsertRow('sd_opiniones', 'id', nueva as unknown as Record<string, unknown>));
-  
-  // API Integration
-  pushApi(
-    apiClient.post('/api/opiniones', {
-      calificacion: nueva.calificacion,
-      comentario: nueva.comentario,
-      proyectoId: nueva.proyectoId,
-      usuarioRut: nueva.usuarioRut,
-    })
-  );
-  
+  await upsertRow('sd_opiniones', 'id', nueva as unknown as Record<string, unknown>);
   return nueva;
 }
 
@@ -262,39 +313,110 @@ export function crearOpinion(input: Omit<Opinion, 'id' | 'fecha'>): Opinion {
 export function getSolicitudes(): Solicitud[] {
   return load<Solicitud>(KEYS.solicitudes, []);
 }
-export function crearSolicitud(input: {
+export async function crearSolicitud(input: {
   tipo: TipoSolicitud;
   nombre: string;
   direccion: string;
   detalle: string;
   usuarioRut: string;
-}): Solicitud {
-  const items = getSolicitudes();
-  const nueva: Solicitud = {
-    id: nextId(items),
-    tipo: input.tipo,
-    nombre: sanitizeText(input.nombre, 120),
-    direccion: sanitizeText(input.direccion, 200),
-    detalle: sanitizeText(input.detalle, 500),
+}): Promise<Solicitud> {
+  let nueva: Solicitud;
+  const apiEndpoint = input.tipo === 'recoleccion' ? '/api/servicios/recoleccion' : '/api/servicios/reciclaje';
+  const postData = input.tipo === 'recoleccion' ? {
+    tipoBasura: input.tipo,
+    ubicacion: input.direccion,
+    motivo: input.detalle,
     usuarioRut: input.usuarioRut,
-    estado: 'PENDIENTE',
-    fecha: new Date().toISOString().slice(0, 10),
+  } : {
+    ubicacionPropuesta: input.direccion,
+    motivo: input.detalle,
+    usuarioRut: input.usuarioRut,
   };
+
+  try {
+    const res = await apiClient.post(apiEndpoint, postData);
+    nueva = {
+      id: res.data.id,
+      tipo: input.tipo,
+      nombre: sanitizeText(input.nombre, 120),
+      direccion: input.direccion,
+      detalle: input.detalle,
+      usuarioRut: input.usuarioRut,
+      estado: res.data.estado || 'PENDIENTE',
+      fecha: new Date().toISOString().slice(0, 10),
+    };
+  } catch (err) {
+    console.warn('[API] Falló la creación de solicitud real, usando local/IndexedDB...', err);
+    const items = getSolicitudes();
+    nueva = {
+      id: nextId(items),
+      tipo: input.tipo,
+      nombre: sanitizeText(input.nombre, 120),
+      direccion: sanitizeText(input.direccion, 200),
+      detalle: sanitizeText(input.detalle, 500),
+      usuarioRut: input.usuarioRut,
+      estado: 'PENDIENTE',
+      fecha: new Date().toISOString().slice(0, 10),
+    };
+  }
+
+  const items = getSolicitudes();
   items.push(nueva);
   save(KEYS.solicitudes, items);
-  pushDb(upsertRow('sd_solicitudes', 'id', nueva as unknown as Record<string, unknown>));
-  
-  // API Integration (solo tipo basura/recolección en el backend)
-  pushApi(
-    apiClient.post('/api/servicios/recoleccion', {
-      tipoBasura: nueva.tipo,
-      ubicacion: nueva.direccion,
-      motivo: nueva.detalle,
-      usuarioRut: nueva.usuarioRut,
-    })
-  );
-  
+  await upsertRow('sd_solicitudes', 'id', nueva as unknown as Record<string, unknown>);
   return nueva;
+}
+export async function actualizarEstadoSolicitud(tipo: TipoSolicitud, id: number, estado: string): Promise<void> {
+  const items = getSolicitudes().map((s) => (s.id === id && s.tipo === tipo ? { ...s, estado } : s));
+  save(KEYS.solicitudes, items);
+  const actualizado = items.find((s) => s.id === id && s.tipo === tipo);
+  if (actualizado) {
+    await upsertRow('sd_solicitudes', 'id', actualizado as unknown as Record<string, unknown>);
+    try {
+      await apiClient.put(`/api/servicios/solicitudes/${tipo}/${id}`, { estado });
+    } catch (err) {
+      console.warn('[API] Falló la actualización de estado de solicitud en API real:', err);
+    }
+  }
+}
+
+export async function actualizarNoticia(id: number, cambios: Partial<Noticia>): Promise<void> {
+  const items = getNoticias().map((n) => (n.id === id ? { ...n, ...cambios } : n));
+  save(KEYS.noticias, items);
+  const actualizado = items.find((n) => n.id === id);
+  if (actualizado) {
+    await upsertRow('sd_noticias', 'id', actualizado as unknown as Record<string, unknown>);
+    try {
+      await apiClient.put(`/api/noticias/${id}`, {
+        titulo: actualizado.titulo,
+        contenido: actualizado.contenido,
+        nombrePeriodista: actualizado.autor,
+      });
+    } catch (err) {
+      console.warn('[API] Falló la actualización de noticia en la API real:', err);
+    }
+  }
+}
+
+export async function actualizarActividad(id: number, cambios: Partial<Actividad>): Promise<void> {
+  const items = getActividades().map((a) => (a.id === id ? { ...a, ...cambios } : a));
+  save(KEYS.actividades, items);
+  const actualizado = items.find((a) => a.id === id);
+  if (actualizado) {
+    await upsertRow('sd_actividades', 'id', actualizado as unknown as Record<string, unknown>);
+    try {
+      await apiClient.put(`/api/actividades/${id}`, {
+        titulo: actualizado.titulo,
+        descripcion: actualizado.descripcion,
+        ubicacion: actualizado.ubicacion,
+        fecha: actualizado.fecha,
+        cuposTotales: actualizado.cuposTotales,
+        cuposOcupados: actualizado.cuposOcupados,
+      });
+    } catch (err) {
+      console.warn('[API] Falló la actualización de actividad en la API real:', err);
+    }
+  }
 }
 
 // ---------- Reportes (admin) ----------

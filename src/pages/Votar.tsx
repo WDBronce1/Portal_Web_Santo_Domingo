@@ -40,19 +40,23 @@ const Votar: React.FC = () => {
     );
   }
 
-  const enviar = () => {
+  const enviar = async () => {
     if (rating === 0) { setError('Selecciona una calificación de 1 a 5 estrellas.'); return; }
     if (comentario.trim().length < 5) { setError('Escribe un comentario de al menos 5 caracteres.'); return; }
-    crearOpinion({
-      proyectoId: proyecto.id,
-      usuarioRut: usuario.rut,
-      usuarioNombre: usuario.nombre,
-      calificacion: rating,
-      comentario,
-    });
-    setError('');
-    setToast('✅ ¡Gracias! Tu opinión fue registrada.');
-    setTimeout(() => history.push(`/proyectos/${proyecto.id}`), 1400);
+    try {
+      await crearOpinion({
+        proyectoId: proyecto.id,
+        usuarioRut: usuario.rut,
+        usuarioNombre: usuario.nombre,
+        calificacion: rating,
+        comentario,
+      });
+      setError('');
+      setToast('✅ ¡Gracias! Tu opinión fue registrada.');
+      setTimeout(() => history.push(`/proyectos/${proyecto.id}`), 1400);
+    } catch (err: any) {
+      setError('Error al registrar tu opinión. Por favor inténtalo de nuevo.');
+    }
   };
 
   return (

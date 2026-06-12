@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useHistory } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHero } from '../components/ui';
 import { Icons as I } from '../components/Icons';
 import { useAuth } from '../context/AuthContext';
+import { apiClient } from '../services/apiClient';
 
 interface Atajo {
   icon: React.FC<{ size?: number }>;
@@ -24,6 +25,13 @@ const ATAJOS: Atajo[] = [
 const Inicio: React.FC = () => {
   const history = useHistory();
   const { usuario } = useAuth();
+  const [clima, setClima] = useState<any>(null);
+
+  useEffect(() => {
+    apiClient.get('/api/clima')
+      .then((res) => setClima(res.data))
+      .catch((err) => console.warn('Error al obtener clima:', err));
+  }, []);
 
   return (
     <Layout>
@@ -32,10 +40,36 @@ const Inicio: React.FC = () => {
         title={usuario ? `Hola, ${usuario.nombre.split(' ')[0]}.` : 'Bienvenido/a a tu comuna.'}
         sub="Gestión ambiental participativa de Santo Domingo. Infórmate, solicita servicios y opina sobre los proyectos que dan forma al territorio."
       >
-        <div className="row-wrap" style={{ marginTop: 24 }}>
+        <div className="row-wrap" style={{ marginTop: 24, gap: 12 }}>
           <a className="btn btn--primary" onClick={() => history.push('/servicios')}><I.Leaf size={17} /> Ver servicios</a>
           <a className="btn btn--ghost" style={{ color: '#fff', borderColor: 'rgba(255,255,255,.35)' }} onClick={() => history.push('/proyectos')}>Cartera de proyectos</a>
         </div>
+
+        {clima && (
+          <div className="row-wrap" style={{
+            marginTop: 24,
+            gap: 12,
+            backgroundColor: 'rgba(255,255,255,0.08)',
+            padding: '12px 18px',
+            borderRadius: 12,
+            border: '1px solid rgba(255,255,255,0.12)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            backdropFilter: 'blur(8px)',
+            maxWidth: '100%'
+          }}>
+            <span style={{ fontSize: '1.8rem', lineHeight: 1 }}>
+              {clima.icon === 'sunny' ? '☀️' : clima.icon === 'cloudy' ? '⛅' : clima.icon === 'rainy' ? '🌧️' : clima.icon === 'thunderstorm' ? '⛈️' : '🌫️'}
+            </span>
+            <div style={{ color: '#fff', fontSize: '0.88rem', lineHeight: '1.35' }}>
+              <strong>Santo Domingo: {clima.temperatura}°C</strong> · {clima.descripcion}
+              <br />
+              <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.68)' }}>
+                Sensación: {clima.sensacion}°C · Viento: {clima.viento} km/h · Humedad: {clima.humedad}%
+              </span>
+            </div>
+          </div>
+        )}
       </PageHero>
 
       <section className="section">

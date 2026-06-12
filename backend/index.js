@@ -3,6 +3,8 @@ const cors = require('cors');
 const { PrismaClient } = require('@prisma/client');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const helmet = require('helmet');
+const xss = require('xss');
 require('dotenv').config();
 
 const app = express();
@@ -11,8 +13,38 @@ const PUERTO = process.env.PUERTO || 3264;
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secreto_municipal_2026';
 
 // Middlewares globales
-app.use(cors()); // Conexión con el frontend
-app.use(express.json()); // Recibir datos en formato JSON
+app.use(helmet({
+    contentSecurityPolicy: false, // Permitir carga de recursos externos en desarrollo/Ionic
+}));
+
+const whitelist = ['http://localhost:5173', 'https://portal-santo-domingo.vercel.app', 'http://localhost:8100'];
+const corsOptions = {
+    origin: function (origin, callback) {
+        if (!origin || whitelist.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('Bloqueado por políticas CORS de la Municipalidad de Santo Domingo'));
+        }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
+};
+app.use(cors(corsOptions));
+app.use(express.json());
+
+// Sanitizar entradas para evitar XSS en req.body
+const sanitizarEntrada = (req, res, next) => {
+    if (req.body && typeof req.body === 'object') {
+        for (const key in req.body) {
+            if (typeof req.body[key] === 'string') {
+                req.body[key] = xss(req.body[key]);
+            }
+        }
+    }
+    next();
+};
+app.use(sanitizarEntrada);
 
 /* ---------------------------------------------------------------------------------------
     Middlewares de Seguridad (EP 2.5 / 2.6)
@@ -161,6 +193,29 @@ app.post('/api/auth/login', async (req, res) => {
 */ 
 app.get('/api/proyectos', async (req, res) => {
     try {
+        const page = parseInt(req.query.page);
+        const limit = parseInt(req.query.limit);
+
+        if (page && limit) {
+            const skip = (page - 1) * limit;
+            const [proyectos, total] = await Promise.all([
+                prisma.proyecto.findMany({
+                    skip,
+                    take: limit
+                }),
+                prisma.proyecto.count()
+            ]);
+            return res.status(200).json({
+                data: proyectos,
+                pagination: {
+                    total,
+                    page,
+                    limit,
+                    pages: Math.ceil(total / limit)
+                }
+            });
+        }
+
         const proyectos = await prisma.proyecto.findMany();
         res.status(200).json(proyectos);
     } catch (error) {
@@ -213,6 +268,30 @@ app.delete('/api/proyectos/:id', autenticarJWT, requiereAdmin, async (req, res) 
 */ 
 app.get('/api/noticias', async(req, res) =>{
     try {
+        const page = parseInt(req.query.page);
+        const limit = parseInt(req.query.limit);
+
+        if (page && limit) {
+            const skip = (page - 1) * limit;
+            const [noticias, total] = await Promise.all([
+                prisma.noticia.findMany({
+                    orderBy: { fechaPublicacion: 'desc' },
+                    skip,
+                    take: limit
+                }),
+                prisma.noticia.count()
+            ]);
+            return res.status(200).json({
+                data: noticias,
+                pagination: {
+                    total,
+                    page,
+                    limit,
+                    pages: Math.ceil(total / limit)
+                }
+            });
+        }
+
         const noticias = await prisma.noticia.findMany({ orderBy: { fechaPublicacion: 'desc' } });
         res.status(200).json(noticias);
     } catch (error) {
@@ -363,7 +442,7 @@ app.delete('/api/opiniones/:id', autenticarJWT, async(req, res) => {
 });
 
 /* ---------------------------------------------------------------------------------------
-    Rutas para Servicios
+    Rutas para Servicios y Solicitudes
 */ 
 app.post('/api/servicios/recoleccion', autenticarJWT, async(req, res) => {
     try {
@@ -378,6 +457,87 @@ app.post('/api/servicios/recoleccion', autenticarJWT, async(req, res) => {
     }
 });
 
+app.post('/api/servicios/reciclaje', autenticarJWT, async (req, res) => {
+    try {
+        const { ubicacionPropuesta, motivo, usuarioRut } = req.body;
+        const nuevaPeticion = await prisma.peticionReciclaje.create({
+            data: { ubicacionPropuesta, motivo, usuarioRut }
+        });
+        res.status(201).json(nuevaPeticion);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error al solicitar punto de reciclaje' });
+    }
+});
+
+app.get('/api/servicios/solicitudes', autenticarJWT, requiereAdmin, async (req, res) => {
+    try {
+        const recolecciones = await prisma.recoleccionDomicilio.findMany({
+            include: { usuario: { select: { rut: true } } }
+        });
+        const peticiones = await prisma.peticionReciclaje.findMany({
+            include: { usuario: { select: { rut: true } } }
+        });
+
+        // Combinar en formato estandarizado
+        const combinadas = [
+            ...recolecciones.map(r => ({
+                id: r.id,
+                tipo: 'recoleccion',
+                nombre: 'Retiro de voluminosos / escombros',
+                direccion: r.ubicacion,
+                detalle: r.motivo,
+                usuarioRut: r.usuarioRut,
+                estado: r.estado,
+                fecha: new Date().toISOString().slice(0, 10)
+            })),
+            ...peticiones.map(p => ({
+                id: p.id,
+                tipo: 'tacho',
+                nombre: 'Solicitar tacho de reciclaje',
+                direccion: p.ubicacionPropuesta,
+                detalle: p.motivo,
+                usuarioRut: p.usuarioRut,
+                estado: p.estado,
+                fecha: new Date().toISOString().slice(0, 10)
+            }))
+        ];
+
+        // Ordenar por ID descendente
+        combinadas.sort((a, b) => b.id - a.id);
+        res.status(200).json(combinadas);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error al obtener las solicitudes' });
+    }
+});
+
+app.put('/api/servicios/solicitudes/:tipo/:id', autenticarJWT, requiereAdmin, async (req, res) => {
+    try {
+        const { tipo, id } = req.params;
+        const { estado } = req.body; // PENDIENTE, EN PROCESO, RESUELTO, RECHAZADO
+
+        if (tipo === 'recoleccion') {
+            const actualizada = await prisma.recoleccionDomicilio.update({
+                where: { id: parseInt(id) },
+                data: { estado }
+            });
+            return res.status(200).json(actualizada);
+        } else if (tipo === 'tacho' || tipo === 'reciclaje') {
+            const actualizada = await prisma.peticionReciclaje.update({
+                where: { id: parseInt(id) },
+                data: { estado }
+            });
+            return res.status(200).json(actualizada);
+        } else {
+            return res.status(400).json({ error: 'Tipo de solicitud inválido' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error al actualizar el estado de la solicitud' });
+    }
+});
+
 app.get('/api/servicios/zonas-verdes', async(req, res) => {
     try {
         const zonas = await prisma.zonaVerde.findMany();
@@ -389,12 +549,72 @@ app.get('/api/servicios/zonas-verdes', async(req, res) => {
 });
 
 /* ---------------------------------------------------------------------------------------
-    Inicialización de Usuarios Semilla (EP 2.5 / 2.6)
+    Integración Externa: API Clima Santo Domingo (EF 5)
 */
-async function sembrarUsuariosSemilla() {
+app.get('/api/clima', async (req, res) => {
     try {
-        const conteo = await prisma.usuario.count();
-        if (conteo === 0) {
+        const response = await fetch(
+            'https://api.open-meteo.com/v1/forecast?latitude=-33.6366&longitude=-71.6186&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m&timezone=America%2FSantiago'
+        );
+        if (response.ok) {
+            const data = await response.json();
+            const current = data.current;
+            
+            let descripcion = 'Despejado';
+            let icon = 'sunny';
+            const code = current.weather_code;
+            if (code >= 1 && code <= 3) {
+                descripcion = 'Parcialmente Nublado';
+                icon = 'cloudy';
+            } else if (code >= 45 && code <= 48) {
+                descripcion = 'Neblina';
+                icon = 'fog';
+            } else if (code >= 51 && code <= 67) {
+                descripcion = 'Llovizna / Lluvia';
+                icon = 'rainy';
+            } else if (code >= 71 && code <= 86) {
+                descripcion = 'Nieve';
+                icon = 'snow';
+            } else if (code >= 95 && code <= 99) {
+                descripcion = 'Tormenta Eléctrica';
+                icon = 'thunderstorm';
+            }
+
+            return res.status(200).json({
+                temperatura: current.temperature_2m,
+                sensacion: current.apparent_temperature,
+                humedad: current.relative_humidity_2m,
+                viento: current.wind_speed_10m,
+                descripcion,
+                icon,
+                fecha: new Date().toISOString()
+            });
+        }
+    } catch (err) {
+        console.warn('[Weather API] Error al conectar con Open-Meteo, usando datos de contingencia:', err.message);
+    }
+
+    // Fallback de contingencia (Santo Domingo, Chile)
+    res.status(200).json({
+        temperatura: 16.5,
+        sensacion: 16.0,
+        humedad: 75,
+        viento: 12.0,
+        descripcion: 'Parcialmente Nublado (Caché local)',
+        icon: 'cloudy',
+        fecha: new Date().toISOString(),
+        contingencia: true
+    });
+});
+
+/* ---------------------------------------------------------------------------------------
+    Inicialización de Datos Semilla (EP 2.5 / 2.6 / EF 1)
+*/
+async function sembrarDatosSemilla() {
+    try {
+        // 1. Usuarios
+        const conteoUsuarios = await prisma.usuario.count();
+        if (conteoUsuarios === 0) {
             console.log('🌱 [Seed] Base de datos vacía. Sembrando usuarios iniciales...');
             const salt = await bcrypt.genSalt(10);
             
@@ -417,10 +637,51 @@ async function sembrarUsuariosSemilla() {
                     password: ciudadanoHash
                 }
             });
-            console.log('✅ [Seed] Usuarios de prueba creados satisfactoriamente.');
+            console.log('✅ [Seed] Usuarios de prueba creados.');
         }
+
+        // 2. Proyectos
+        const conteoProyectos = await prisma.proyecto.count();
+        if (conteoProyectos === 0) {
+            console.log('🌱 [Seed] Sembrando proyectos iniciales...');
+            await prisma.proyecto.createMany({
+                data: [
+                    { nombre: 'Extensión de Ciclovía Costera', rutEmpresa: '76.123.456-7', ubicacion: 'Borde Costero', fechaInicio: new Date('2026-06-01'), duracionMeses: 8, estado: 'En Planificación' },
+                    { nombre: 'Mejoramiento Plaza de Armas', rutEmpresa: '76.987.654-3', ubicacion: 'Centro', fechaInicio: new Date('2026-03-15'), duracionMeses: 5, estado: 'En Ejecución' },
+                    { nombre: 'Centro Comunitario Ecológico', rutEmpresa: '77.555.444-2', ubicacion: 'Sector Sur', fechaInicio: new Date('2026-08-01'), duracionMeses: 12, estado: 'Licitación' },
+                    { nombre: 'Restauración de Fachadas Patrimoniales', rutEmpresa: '78.222.111-9', ubicacion: 'Casco Histórico', fechaInicio: new Date('2026-07-01'), duracionMeses: 10, estado: 'Evaluación Ambiental' }
+                ]
+            });
+        }
+
+        // 3. Noticias
+        const conteoNoticias = await prisma.noticia.count();
+        if (conteoNoticias === 0) {
+            console.log('🌱 [Seed] Sembrando noticias iniciales...');
+            await prisma.noticia.createMany({
+                data: [
+                    { titulo: 'Gran Limpieza del Borde Costero', contenido: 'La jornada reunió a juntas de vecinos, colegios y agrupaciones ecológicas en una limpieza colaborativa que retiró cerca de 1,2 toneladas de residuos del litoral.', nombrePeriodista: 'Dirección de Medio Ambiente', fechaPublicacion: new Date('2026-05-05') },
+                    { titulo: 'Nuevo programa de compostaje domiciliario', contenido: 'El programa busca reducir la fracción orgánica que llega al relleno sanitario y promover huertos urbanos en los hogares de la comuna.', nombrePeriodista: 'Oficina de Reciclaje', fechaPublicacion: new Date('2026-05-02') },
+                    { titulo: 'Luminarias solares en plazas principales', contenido: 'La inversión permitirá un ahorro energético anual estimado del 35% en alumbrado público de áreas verdes.', nombrePeriodista: 'Dirección de Obras', fechaPublicacion: new Date('2026-04-28') }
+                ]
+            });
+        }
+
+        // 4. Actividades
+        const conteoActividades = await prisma.actividad.count();
+        if (conteoActividades === 0) {
+            console.log('🌱 [Seed] Sembrando actividades iniciales...');
+            await prisma.actividad.createMany({
+                data: [
+                    { titulo: 'Taller de Huertos Urbanos', descripcion: 'Aprende a cultivar tus propios vegetales en espacios reducidos usando materiales reciclados.', ubicacion: 'Invernadero Municipal', fecha: new Date('2026-05-10T10:00:00Z'), cuposTotales: 30, cuposOcupados: 18 },
+                    { titulo: 'Caminata de Observación de Aves', descripcion: 'Recorrido guiado para identificar especies endémicas y proteger los humedales.', ubicacion: 'Humedal Costero', fecha: new Date('2026-05-15T08:00:00Z'), cuposTotales: 25, cuposOcupados: 9 },
+                    { titulo: 'Feria de Emprendimiento Sustentable', descripcion: 'Stands de artesanos y pymes locales que trabajan con economía circular.', ubicacion: 'Plaza Principal', fecha: new Date('2026-05-22T11:00:00Z'), cuposTotales: 50, cuposOcupados: 31 }
+                ]
+            });
+        }
+        console.log('✅ [Seed] Sembrado de base de datos finalizado con éxito.');
     } catch (err) {
-        console.error('❌ [Seed] Error al inicializar usuarios en PostgreSQL:', err.message);
+        console.error('❌ [Seed] Error al inicializar datos en PostgreSQL:', err.message);
     }
 }
 
@@ -429,5 +690,5 @@ async function sembrarUsuariosSemilla() {
 */
 app.listen(PUERTO, async () => {
     console.log(`✅ Servidor corriendo en http://localhost:${PUERTO}`);
-    await sembrarUsuariosSemilla();
+    await sembrarDatosSemilla();
 });

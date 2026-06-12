@@ -44,22 +44,26 @@ const Servicios: React.FC = () => {
     history.push('/login');
   };
 
-  const enviarSolicitud = () => {
+  const enviarSolicitud = async () => {
     if (!isAuthenticated) return exigirLogin();
     if (!form.nombre.trim() || !form.direccion.trim()) {
       setError('Completa al menos tu nombre y la dirección.');
       return;
     }
-    crearSolicitud({
-      tipo: tipoSolicitud,
-      nombre: form.nombre,
-      direccion: form.direccion,
-      detalle: form.detalle,
-      usuarioRut: usuario!.rut,
-    });
-    setForm({ nombre: '', direccion: '', detalle: '' });
-    setError('');
-    setToast('✅ Solicitud enviada correctamente. La revisará un funcionario municipal.');
+    try {
+      await crearSolicitud({
+        tipo: tipoSolicitud,
+        nombre: form.nombre,
+        direccion: form.direccion,
+        detalle: form.detalle,
+        usuarioRut: usuario!.rut,
+      });
+      setForm({ nombre: '', direccion: '', detalle: '' });
+      setError('');
+      setToast('✅ Solicitud enviada correctamente. La revisará un funcionario municipal.');
+    } catch (err: any) {
+      setError('Error al enviar la solicitud al servidor. Inténtalo nuevamente.');
+    }
   };
 
   const renderServ = () => {

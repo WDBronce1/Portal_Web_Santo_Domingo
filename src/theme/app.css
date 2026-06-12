@@ -335,6 +335,23 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible {
   outline: 3px solid var(--lime); outline-offset: 2px; border-radius: 6px;
 }
 
+/* Skeletons */
+@keyframes skeleton-glow {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+.skeleton-loading {
+  animation: skeleton-glow 1.5s infinite ease-in-out;
+  background-color: var(--line-soft) !important;
+  color: transparent !important;
+  pointer-events: none;
+}
+.skeleton-loading * {
+  visibility: hidden;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
