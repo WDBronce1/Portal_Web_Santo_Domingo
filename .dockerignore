@@ -1,0 +1,11 @@
+node_modules
+dist
+.git
+.vscode
+*.log
+.env
+Dockerfile
+docker-compose.yml
+cypress
+frontend/node_modules
+backend/node_modules
